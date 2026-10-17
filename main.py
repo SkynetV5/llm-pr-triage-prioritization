@@ -1,0 +1,53 @@
+import json
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import random
+
+valid_sample = pd.read_csv("cleaned_dataset.csv", index_col=0, parse_dates=["created_at","closed_at"])
+
+
+def add_time_urgency_ground_truth(df):
+    df_gt = df.copy()
+
+    # Logarytmizacja czasu
+    df_gt["log_duration"] = np.log1p(df_gt["duration_hours"])
+
+    mean_per_repo = df_gt.groupby("repo")["log_duration"].transform("mean")
+    std_per_repo = df_gt.groupby("repo")["log_duration"].transform("std")
+
+    # Zabezpieczenie przed std=0 lub NaN (np. gdy w repo jest tylko 1 PR)
+    std_per_repo = std_per_repo.replace(0, np.nan).fillna(1.0)
+
+    #Z-Score (normalizacja czasu wewnątrz repozytorium)
+    df_gt["norm_duration"] = (df_gt["log_duration"] - mean_per_repo) / std_per_repo
+
+    #Percentyle i podział na 4 kwartyle w skali całego zbioru
+    pct_ranks = df_gt["norm_duration"].rank(method="first", pct=True)
+
+    #Przypisanie numeryczne klas P0-P3
+    df_gt["gt_class_num"] = pd.cut(
+        pct_ranks,
+        bins=[0.0, 0.25, 0.50, 0.75, 1.00],
+        labels=[3, 2, 1, 0],
+        include_lowest=True,
+    ).astype(int)
+
+    
+    class_map = {
+        3: "P0 (Krytyczny)",
+        2: "P1 (Wysoki)",
+        1: "P2 (Średni)",
+        0: "P3 (Niski)",
+    }
+    df_gt["gt_p_class"] = df_gt["gt_class_num"].map(class_map)
+
+    return df_gt
+
+valid_sample_gt = add_time_urgency_ground_truth(valid_sample)
+
+print("--- ROZKŁAD KLAS GROUND TRUTH ---")
+print(valid_sample_gt["gt_p_class"].value_counts().sort_index())
+
+valid_sample_gt.to_csv("github_prs_ground_truth.csv", index=True)
