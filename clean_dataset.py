@@ -76,6 +76,7 @@ records = []
 for idx, row in df_raw.iterrows():
     pr = row.get("pr") if isinstance(row.get("pr"), dict) else {}
     user = pr.get("user") if isinstance(pr.get("user"), dict) else {}
+    candidate = row.get("candidate") if isinstance(row.get("candidate"), dict) else {}
     username = user.get("login", "") if user else ""
     user_type = user.get("type", "") if user else ""
 
@@ -90,6 +91,11 @@ for idx, row in df_raw.iterrows():
     
     body = pr.get("body") or ""
     is_empty_body = len(str(body).strip()) < 10
+
+    pr_title = candidate.get("pr_title", "") if candidate else {}
+    pr_body = candidate.get("pr_body" ,"") if candidate else {}
+ 
+
     
     reviews = row.get("reviews") or []
     review_comments = row.get("review_comments") or []
@@ -119,6 +125,8 @@ for idx, row in df_raw.iterrows():
             "deletions": pr.get("deletions", 0) or 0,
             "changed_files": pr.get("changed_files", 0) or 0,
             "diff_lines": diff_lines,
+            "pr_title": pr_title,
+            "pr_body": pr_body
         }
     )
 
