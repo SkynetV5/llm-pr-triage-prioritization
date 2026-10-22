@@ -19,12 +19,6 @@ def predict_priority(title, description, additions,deletions,changed_files,diff_
     else: description = description[:2500]
 
 
-    
-
-
-    
-
-
     prompt = f"""You are an expert lead software engineer performing Code Review Triage.
     Analyze the following Pull Request (PR) and assign it to one of 4 priority levels:
 
@@ -82,7 +76,7 @@ def predict_priority(title, description, additions,deletions,changed_files,diff_
 valid_sample_gt = pd.read_csv("github_prs_ground_truth_sample_2000.csv" ,index_col=0, parse_dates=["created_at", "closed_at"] )
 
 
-print(f"Rozpoczynam przetwarzanie {len(valid_sample_gt)} PR-ów za pomocą LLM (Wariant A)")
+print(f"Rozpoczynam przetwarzanie {len(valid_sample_gt)} PR-ów za pomocą LLM (Wariant B)")
     
 
 
@@ -123,7 +117,7 @@ valid_sample_gt["llm_pred_priority_text"] = pred_texts
 valid_sample_gt["llm_pred_class_num"] = pred_class_nums
 valid_sample_gt["llm_reasoning"] = reasonings
 
-output_filename = "github_prs_llm_wariant_a.csv"
+output_filename = "github_prs_llm_wariant_b.csv"
 
 valid_sample_gt.to_csv( output_filename, index=True)
 
