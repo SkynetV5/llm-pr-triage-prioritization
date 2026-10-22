@@ -18,7 +18,7 @@ def calculate_mrr(y_true,y_score):
     
 
 
-valid_sample_gt = pd.read_csv("github_prs_ground_truth.csv", index_col=0, parse_dates=["created_at", "closed_at"])
+valid_sample_gt = pd.read_csv("github_prs_ground_truth_sample_2000.csv", index_col=0, parse_dates=["created_at", "closed_at"])
 
 ndcg5_list = []
 ndcg10_list = []

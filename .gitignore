@@ -86,6 +86,7 @@ ipython_config.py
 # Datasets
 cleaned_dataset.csv
 github_prs_ground_truth.csv
+github_prs_ground_truth_sample_2000.csv
 github_pr_issue_traces_raw_2025_10k.jsonl
 
 # pyenv

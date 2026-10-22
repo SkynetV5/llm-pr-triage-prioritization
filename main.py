@@ -50,4 +50,9 @@ valid_sample_gt = add_time_urgency_ground_truth(valid_sample)
 print("--- ROZKŁAD KLAS GROUND TRUTH ---")
 print(valid_sample_gt["gt_p_class"].value_counts().sort_index())
 
-valid_sample_gt.to_csv("github_prs_ground_truth.csv", index=True)
+valid_sample_gt_2000 = valid_sample_gt.sample(n=2000, random_state=42).copy()
+
+# for idx,row in valid_sample_gt_2000.iterrows():
+#     print(row["labels"])
+
+valid_sample_gt_2000.to_csv("github_prs_ground_truth_sample_2000.csv", index=True)

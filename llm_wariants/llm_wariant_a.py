@@ -2,6 +2,7 @@ import json
 import ollama
 import math
 import pandas as pd
+import time
 
 
 PRIORITY_MAP = {"P0": 3, "P1": 2, "P2": 1, "P3": 0}
@@ -61,22 +62,40 @@ def predict_priority(title, description):
                     "reasoning": str(e),
                 }
 
-valid_sample_gt = pd.read_csv("github_prs_ground_truth.csv" ,index_col=0, parse_dates=["created_at", "closed_at"] )
+valid_sample_gt = pd.read_csv("github_prs_ground_truth_sample_2000.csv" ,index_col=0, parse_dates=["created_at", "closed_at"] )
 
 
-#test for first row
-first_row = valid_sample_gt.iloc[0]
-print(first_row)
-title = first_row["pr_title"]
-desc = first_row["pr_body"]
-gt_value = first_row["gt_class_num"]
-
-result = predict_priority(title,desc)
-
-print("=== TEST NA 1 PR-ZE Z BAZY DANYCH ===") 
-print(f"Tytuł PR: {title}") 
-print(f"Prawdziwy GT: {gt_value}") 
-print( f"Predykcja Ollamy: {result['priority_text']}" f" (numerycznie: {result['priority_num']})" ) 
-print(f"Uzasadnienie LLM: {result['reasoning']}")
-
+print(f"Rozpoczynam przetwarzanie {len(valid_sample_gt)} PR-ów za pomocą LLM (Wariant A)")
     
+
+
+pred_texts = []
+pred_class_nums = []
+reasonings = []
+
+start_time = time.time()
+
+for idx, (i, row ) in enumerate(valid_sample_gt.iterrows(), start=1):
+
+    result = predict_priority(row["pr_title"], row["pr_body"])
+
+    pred_texts.append(result["priority_text"])
+    pred_class_nums.append(result["priority_num"]) 
+    reasonings.append(result["reasoning"])
+
+    if idx % 25 == 0 or idx == len(valid_sample_gt):
+        elapsed = time.time() - start_time
+        avg_per_pr = elapsed / idx
+        print( f"Progress: {idx}/{len(valid_sample_gt)} PR-ów | Czas: {elapsed:.1f}s | Średnio:" f" {avg_per_pr:.2f}s/PR" )
+
+
+valid_sample_gt["llm_pred_priority_text"] = pred_texts
+valid_sample_gt["llm_pred_class_num"] = pred_class_nums
+valid_sample_gt["llm_reasoning"] = reasonings
+
+output_filename = "github_prs_llm_wariant_a.csv"
+
+valid_sample_gt.to_csv( output_filename, index=True)
+
+total_time = time.time() - start_time 
+print( f"\\n ZAKOŃCZONO! Zapisano wyniki do pliku: {output_filename}" f" (Łączny czas: {total_time:.2f}s)" )

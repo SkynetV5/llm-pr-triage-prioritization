@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import random
+from collections import Counter
 
 
 def print_json_tree(data, indent="", is_last=True, max_depth=3, current_depth=0):
@@ -71,10 +72,73 @@ print("Dostępne kolumny:", df_raw.columns.tolist())
 
 #2 Ekstrakcja i Higiena Danych
 
+LABEL_KEYWORDS = [ 
+    "bug", 
+    "fix", 
+    "hotfix", 
+    "security", 
+    "feature", 
+    "regression", 
+    "defect",
+    "enhanc", 
+    "doc", 
+    "chore", 
+    "refactor", 
+    "wip", 
+    "breaking",
+    "core",
+    "storage",
+    "cleanup",
+    "style", 
+    "ci", 
+    "build", 
+    "dep",
+    "ui",
+    "ux",
+    "server",
+    "tools",
+    "test",
+
+      ]
+
+EXCLUDED_LABEL_KEYWORDS = [ 
+    "p0", 
+    "p1", 
+    "p2", 
+    "p3", 
+    "p4", 
+    "priority", 
+    "prio", 
+    "urgent", 
+    "blocker",
+    "approved", 
+    "ci-approved", 
+    "qa-passed", 
+    "qa-approved", 
+    "ready-to-merge", 
+    "ready-for-merge", 
+    "needs-review", 
+    "needs-work", 
+    "changes-requested", 
+    "review-requested", 
+    "merged", 
+    "closed",
+    "sprint", 
+    "team", 
+    "jira", 
+    "epic", 
+    "squad", 
+    "dept",
+]
+    
+
 records = []
+
+labels_counts = Counter()
 
 for idx, row in df_raw.iterrows():
     pr = row.get("pr") if isinstance(row.get("pr"), dict) else {}
+    files = row.get("files") if isinstance(row.get("files"), list) else []
     user = pr.get("user") if isinstance(pr.get("user"), dict) else {}
     candidate = row.get("candidate") if isinstance(row.get("candidate"), dict) else {}
     username = user.get("login", "") if user else ""
@@ -83,6 +147,32 @@ for idx, row in df_raw.iterrows():
     base = pr.get("base") if isinstance(pr.get("base"), dict) else {}
     repo_info = base.get("repo") if isinstance(base.get("repo"), dict) else {}
     repo_name = repo_info.get("full_name", "unknown")
+
+    raw_labels_list = [l["name"] for l in pr.get("labels", []) if "name" in l]
+
+    # for label in raw_labels_list:
+    #     labels_counts[label.strip()] += 1
+
+    labels_list = []
+
+    for label in raw_labels_list:
+        if any(ex_keyword in label.lower() for ex_keyword  in EXCLUDED_LABEL_KEYWORDS):
+            continue
+        
+        if any(keyword in label.lower() for keyword in LABEL_KEYWORDS):
+            labels_list.append(label)
+    
+
+    file_paths = []
+
+    for file in files:
+        if isinstance(file, dict) and "filename" in file:
+            file_paths.append(file["filename"])
+
+    has_tests = any("test" in file["filename"].lower() or "spec" in file["filename"].lower() for file in files)
+
+
+    directories_count = len(file_paths)
 
     # Flagi jakościowe
     api_errors = row.get("api_errors")
@@ -100,6 +190,8 @@ for idx, row in df_raw.iterrows():
     reviews = row.get("reviews") or []
     review_comments = row.get("review_comments") or []
     has_no_reviews = (len(reviews) == 0) and (len(review_comments) == 0)
+
+    comments_count = len(row.get("pr_comments", []))
     
     raw_diff = row.get("full_diff")
     if isinstance(raw_diff, str):
@@ -124,9 +216,15 @@ for idx, row in df_raw.iterrows():
             "additions": pr.get("additions", 0) or 0,
             "deletions": pr.get("deletions", 0) or 0,
             "changed_files": pr.get("changed_files", 0) or 0,
+            "file_paths_list": ", ".join(file_paths),
+            "directories_count": directories_count,
             "diff_lines": diff_lines,
+            "has_tests": has_tests,
+            "labels": ", ".join(labels_list),
             "pr_title": pr_title,
-            "pr_body": pr_body
+            "pr_body": pr_body,
+            "comments_count": comments_count,
+            
         }
     )
 
@@ -175,6 +273,8 @@ valid_sample['duration_hours'] = (
 )
 
 valid_sample.to_csv("cleaned_dataset.csv", index=True)
+
+# print(labels_counts)
 
 # merged_stats = valid_sample['merged'].value_counts(normalize=True) * 100
 
