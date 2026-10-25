@@ -3,9 +3,53 @@ import ollama
 import math
 import pandas as pd
 import time
+import re
 
+
+try:
+    from json_repair import repair_json
+
+    HAS_JSON_REPAIR = True
+except ImportError:
+    HAS_JSON_REPAIR = False
 
 PRIORITY_MAP = {"P0": 3, "P1": 2, "P2": 1, "P3": 0}
+
+
+def parse_llm_json(answer_str: str) -> dict:
+    """Fix parser from output LLM: json.loads -> json_repair -> regex fallback."""
+    if not answer_str or not isinstance(answer_str, str):
+        return {"priority": "P2", "reasoning": "Empty answer from LLM"}
+
+    
+    try:
+        return json.loads(answer_str)
+    except Exception:
+        pass
+
+   
+    if HAS_JSON_REPAIR:
+        try:
+            repaired = repair_json(answer_str)
+            return json.loads(repaired)
+        except Exception:
+            pass
+
+    match = re.search(r"\b(P[0-3])\b", answer_str, re.IGNORECASE)
+    if match:
+        p_code = match.group(1).upper()
+        return {
+            "priority": p_code,
+            "reasoning": (
+                f"Recovered priority {p_code} from text using Regex (JSON syntax error)"
+            ),
+        }
+
+
+    return {
+        "priority": "P2",
+        "reasoning": "Fatal JSON formatting error - default P2",
+    }
 
 
 def predict_priority(title, description, full_diff):
@@ -37,11 +81,13 @@ def predict_priority(title, description, full_diff):
     """
 
     try:
-        response = ollama.chat(model="llama3.2", messages=[{"role": "user", "content": prompt}], format="json", options={"temperature": 0.0, "num_ctx": 2048,})
+        response = ollama.chat(model="llama3.2", messages=[{"role": "user", "content": prompt}], format="json", options={"temperature": 0.0, "num_ctx": 2048, "num_predict": 256})
 
-        answer = response["message"]["content"]
+        answer_raw = response["message"]["content"]
 
-        answer = json.loads(answer)
+        answer = parse_llm_json(answer_raw)
+
+        reasoning = str(answer.get("reasoning", ""))
 
         priority = answer.get("priority", "P2").strip().upper()
 
@@ -66,7 +112,7 @@ def predict_priority(title, description, full_diff):
 valid_sample_gt = pd.read_csv("github_prs_ground_truth_sample_2000.csv" ,index_col=0, parse_dates=["created_at", "closed_at"] )
 
 
-print(f"Rozpoczynam przetwarzanie {len(valid_sample_gt)} PR-ów za pomocą LLM (Wariant A)")
+print(f"Rozpoczynam przetwarzanie {len(valid_sample_gt)} PR-ów za pomocą LLM (Wariant C)")
     
 
 

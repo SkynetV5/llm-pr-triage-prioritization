@@ -91,6 +91,9 @@ print("Dostępne kolumny:", df_raw.columns.tolist())
 
 # 2 Ekstrakcja i Higiena Danych
 
+MAX_LINES_LENGTH_PER_FILE = 150
+MAX_TOTAL_LINES = 800
+
 LABEL_KEYWORDS = [
     "bug",
     "fix",
@@ -254,12 +257,12 @@ for idx, row in df_raw.iterrows():
 
     diff_lines = len(diff_text.splitlines()) if diff_text else 0
 
-    files_diff = re.split(r"(?=diff --git)", raw_diff)
+    files_diffs = re.split(r"(?=diff --git)", diff_text)
 
     cleaned_file_blocks = []
     total_lines_count = 0
 
-    for file_block in files_diff:
+    for file_block in files_diffs:
         if file_block.strip():
             first_line = file_block.split("\n")[0]
             file_path_match = re.search(r"b/(.+)$", first_line)
@@ -277,7 +280,28 @@ for idx, row in df_raw.iterrows():
                     f"[Generated file skipped/lockfile: {file_path}]\n"
                 )
             else:
-                pass
+                lines = file_block.split("\n")
+                if(len(lines) > MAX_LINES_LENGTH_PER_FILE):
+                    truncated_lines = lines[:MAX_LINES_LENGTH_PER_FILE]
+                    truncated_lines.append( f"\n... [Trimmed diff of file {file_path} - skipping {len(lines) - MAX_LINES_LENGTH_PER_FILE} lines] ...")
+                    file_block = "\n".join(truncated_lines)
+
+                block_line_count = len(file_block.split("\n"))
+                if total_lines_count + block_line_count > MAX_TOTAL_LINES:
+                    remaining_budget  = MAX_TOTAL_LINES - total_lines_count
+                    if remaining_budget > 20:
+                        truncated_lines = file_block.split("\n")[:remaining_budget]
+                        truncated_lines.append("\n... [Diff line limit reached for entire PR - remaining files trimmed] ...")
+                        cleaned_file_blocks.append("\n".join(truncated_lines))
+                    break
+
+                cleaned_file_blocks.append(file_block)
+                total_lines_count += block_line_count
+
+        full_diff = "\n".join(cleaned_file_blocks).strip()
+
+                
+
 
     records.append(
         {
@@ -297,6 +321,7 @@ for idx, row in df_raw.iterrows():
             "file_paths_list": ", ".join(file_paths),
             "directories_count": directories_count,
             "diff_lines": diff_lines,
+            "full_diff": full_diff,
             "has_tests": has_tests,
             "labels": ", ".join(labels_list),
             "pr_title": pr_title,
