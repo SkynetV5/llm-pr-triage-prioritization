@@ -6,15 +6,33 @@ import numpy as np
 
 
 def evaluate_variant(df, pred_col, name="Wariant"):
-    y_true = df["gt_class_num"].values
-    y_pred = df[pred_col].values
 
-    spearmanr_score = spearmanr(y_true, y_pred)[0]
+    mrr_list = []
+    ndcg5_list = []
+    ndcg10_list = []
+    spearman_list = []
 
-    sorted_y_pred = np.argsort(-y_pred)
-    mrr_score = calculate_mrr(y_true, sorted_y_pred)
-    ndcg_score_5 = ndcg_score([y_true], [y_pred], k=5)
-    ndcg_score_10 = ndcg_score([y_true], [y_pred], k=10)
+    for repo_name, group in df.groupby("repo"):
+
+        if len(group) < 3:
+            continue
+
+        y_true = group["gt_class_num"].values
+        y_pred = group[pred_col].values
+
+        if len(np.unique(y_true)) > 1 and len(np.unique(y_pred)) > 1:
+            spearmanr_score = spearmanr(y_true, y_pred)[0]
+            if not np.isnan(spearmanr_score):
+                spearman_list.append(spearmanr_score)
+
+        mrr_score = calculate_mrr(y_true, y_pred)
+        mrr_list.append(mrr_score)
+
+        ndcg_score_5 = ndcg_score([y_true], [y_pred], k=5)
+        ndcg5_list.append(ndcg_score_5)
+
+        ndcg_score_10 = ndcg_score([y_true], [y_pred], k=10)
+        ndcg10_list.append(ndcg_score_10)
 
     class_counts = (
         df[pred_col.replace("llm_pred_class_num", "llm_pred_priority_text")]
@@ -24,10 +42,10 @@ def evaluate_variant(df, pred_col, name="Wariant"):
 
     return {
         "Wariant": name,
-        "NDCG@5": round(ndcg_score_5, 4),
-        "NDCG@10": round(ndcg_score_10, 4),
-        "MRR": round(mrr_score, 4),
-        "Spearman_Score": round(spearmanr_score, 4),
+        "NDCG@5": round(np.mean(ndcg5_list), 4),
+        "NDCG@10": round(np.mean(ndcg10_list), 4),
+        "MRR": round(np.mean(mrr_list), 4),
+        "Spearman_Score": round(np.mean(spearman_list), 4),
         "P0_count": class_counts.get("P0", 0),
         "P1_count": class_counts.get("P1", 0),
         "P2_count": class_counts.get("P2", 0),

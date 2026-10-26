@@ -10,7 +10,7 @@ from sklearn.metrics import ndcg_score
 def calculate_mrr(y_true, y_score):
     max_y_true = np.max(y_true)
 
-    sorted_y_score = np.argsort(y_score)[::-1]
+    sorted_y_score = np.argsort(-y_score)
 
     for rank, idx in enumerate(sorted_y_score, start=1):
         if y_true[idx] == max_y_true:
