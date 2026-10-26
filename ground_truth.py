@@ -5,10 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 
-valid_sample = pd.read_csv(
-    "cleaned_dataset.csv", index_col=0, parse_dates=["created_at", "closed_at"]
-)
-
 
 def add_time_urgency_ground_truth(df):
     df_gt = df.copy()
@@ -44,14 +40,20 @@ def add_time_urgency_ground_truth(df):
     return df_gt
 
 
-valid_sample_gt = add_time_urgency_ground_truth(valid_sample)
+if __name__ == "__main__":
 
-print("--- ROZKŁAD KLAS GROUND TRUTH ---")
-print(valid_sample_gt["gt_p_class"].value_counts().sort_index())
+    valid_sample = pd.read_csv(
+        "cleaned_dataset.csv", index_col=0, parse_dates=["created_at", "closed_at"]
+    )
 
-valid_sample_gt_2000 = valid_sample_gt.sample(n=2000, random_state=42).copy()
+    valid_sample_gt = add_time_urgency_ground_truth(valid_sample)
 
-# for idx,row in valid_sample_gt_2000.iterrows():
-#     print(row["labels"])
+    print("--- ROZKŁAD KLAS GROUND TRUTH ---")
+    print(valid_sample_gt["gt_p_class"].value_counts().sort_index())
 
-valid_sample_gt_2000.to_csv("github_prs_ground_truth_sample_2000.csv", index=True)
+    valid_sample_gt_2000 = valid_sample_gt.sample(n=2000, random_state=42).copy()
+
+    # for idx,row in valid_sample_gt_2000.iterrows():
+    #     print(row["labels"])
+
+    valid_sample_gt_2000.to_csv("github_prs_ground_truth_sample_2000.csv", index=True)

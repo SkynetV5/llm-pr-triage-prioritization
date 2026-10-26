@@ -199,6 +199,8 @@ for idx, row in df_raw.iterrows():
     username = user.get("login", "") if user else ""
     user_type = user.get("type", "") if user else ""
 
+    commits_count = pr.get("commits") if isinstance(pr.get("commits"), int) else 0
+
     base = pr.get("base") if isinstance(pr.get("base"), dict) else {}
     repo_info = base.get("repo") if isinstance(base.get("repo"), dict) else {}
     repo_name = repo_info.get("full_name", "unknown")
@@ -281,17 +283,21 @@ for idx, row in df_raw.iterrows():
                 )
             else:
                 lines = file_block.split("\n")
-                if(len(lines) > MAX_LINES_LENGTH_PER_FILE):
+                if len(lines) > MAX_LINES_LENGTH_PER_FILE:
                     truncated_lines = lines[:MAX_LINES_LENGTH_PER_FILE]
-                    truncated_lines.append( f"\n... [Trimmed diff of file {file_path} - skipping {len(lines) - MAX_LINES_LENGTH_PER_FILE} lines] ...")
+                    truncated_lines.append(
+                        f"\n... [Trimmed diff of file {file_path} - skipping {len(lines) - MAX_LINES_LENGTH_PER_FILE} lines] ..."
+                    )
                     file_block = "\n".join(truncated_lines)
 
                 block_line_count = len(file_block.split("\n"))
                 if total_lines_count + block_line_count > MAX_TOTAL_LINES:
-                    remaining_budget  = MAX_TOTAL_LINES - total_lines_count
+                    remaining_budget = MAX_TOTAL_LINES - total_lines_count
                     if remaining_budget > 20:
                         truncated_lines = file_block.split("\n")[:remaining_budget]
-                        truncated_lines.append("\n... [Diff line limit reached for entire PR - remaining files trimmed] ...")
+                        truncated_lines.append(
+                            "\n... [Diff line limit reached for entire PR - remaining files trimmed] ..."
+                        )
                         cleaned_file_blocks.append("\n".join(truncated_lines))
                     break
 
@@ -299,9 +305,6 @@ for idx, row in df_raw.iterrows():
                 total_lines_count += block_line_count
 
         full_diff = "\n".join(cleaned_file_blocks).strip()
-
-                
-
 
     records.append(
         {
@@ -322,6 +325,7 @@ for idx, row in df_raw.iterrows():
             "directories_count": directories_count,
             "diff_lines": diff_lines,
             "full_diff": full_diff,
+            "commits_count": commits_count,
             "has_tests": has_tests,
             "labels": ", ".join(labels_list),
             "pr_title": pr_title,
